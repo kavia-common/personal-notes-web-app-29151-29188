@@ -29,7 +29,7 @@ function App() {
   }, [settings?.theme]);
 
   // Persistent notes list
-  const [notes, setNotes] = useLocalStorage(KEYS.notes, getInitialNotes());
+  const [notes, setNotes] = useLocalStorage(KEYS.notes, getInitialNotes);
 
   // Session/UI state
   const [selectedNoteId, setSelectedNoteId] = useState(null);
@@ -40,42 +40,103 @@ function App() {
 
   // Derived values
   const selectedNote = useMemo(
-    () => notes.find(n => n.id === selectedNoteId) || null,
+    () => notes.find((n) => n.id === selectedNoteId) || null,
     [notes, selectedNoteId]
   );
 
   // PUBLIC_INTERFACE
   const toggleTheme = () => {
-    setSettings(prev => {
+    setSettings((prev) => {
       const nextTheme = (prev?.theme || 'light') === 'light' ? 'dark' : 'light';
       return { ...(prev || {}), theme: nextTheme };
     });
   };
 
-  // Placeholder handlers (no-ops for now; will be implemented in later steps)
+  // PUBLIC_INTERFACE
+  // Open editor in create mode
   const handleCreateNote = () => {
     setEditorMode('create');
     setIsEditorOpen(true);
   };
 
+  // PUBLIC_INTERFACE
+  // Open editor in edit mode for a given note
   const handleEditNote = (noteId) => {
     setSelectedNoteId(noteId);
     setEditorMode('edit');
     setIsEditorOpen(true);
   };
 
+  // PUBLIC_INTERFACE
+  // Close the editor modal
   const handleCloseEditor = () => {
     setIsEditorOpen(false);
   };
 
-  const handleSaveNote = (noteData) => {
-    // No-op for scaffolding; just close editor
-    setIsEditorOpen(false);
+  // PUBLIC_INTERFACE
+  // Create new note
+  const addNote = (payload) => {
+    const id =
+      typeof crypto !== 'undefined' && crypto?.randomUUID
+        ? crypto.randomUUID()
+        : String(Date.now());
+    const now = Date.now();
+    const newNote = {
+      ...DEFAULT_NOTE,
+      id,
+      title: payload.title,
+      content: payload.content || '',
+      tags: Array.isArray(payload.tags) ? payload.tags : [],
+      createdAt: now,
+      updatedAt: now,
+      pinned: false,
+    };
+    setNotes((prev) => [newNote, ...prev]);
+    setSelectedNoteId(id);
   };
 
-  const handleSearch = (q) => setSearchQuery(q);
-  const handleSelectTag = (tag) => setSelectedTag(tag);
-  const handleClearTag = () => setSelectedTag(null);
+  // PUBLIC_INTERFACE
+  // Update existing note
+  const updateNote = (payload) => {
+    const targetId = payload.id || selectedNoteId;
+    if (!targetId) return;
+    const now = Date.now();
+    setNotes((prev) =>
+      prev.map((n) =>
+        n.id === targetId
+          ? {
+              ...n,
+              title: payload.title,
+              content: payload.content || '',
+              tags: Array.isArray(payload.tags) ? payload.tags : [],
+              updatedAt: now,
+            }
+          : n
+      )
+    );
+  };
+
+  // PUBLIC_INTERFACE
+  // Delete note with confirmation handled by NotesList already; this is idempotent
+  const deleteNote = (id) => {
+    setNotes((prev) => prev.filter((n) => n.id !== id));
+    setSelectedNoteId((prevId) => (prevId === id ? null : prevId));
+  };
+
+  // PUBLIC_INTERFACE
+  // Toggle pin on a note
+  const togglePin = (id, next) => {
+    const now = Date.now();
+    setNotes((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, pinned: !!next, updatedAt: now } : n))
+    );
+  };
+
+  // PUBLIC_INTERFACE
+  const selectTag = (tag) => setSelectedTag(tag);
+
+  // PUBLIC_INTERFACE
+  const setSearch = (q) => setSearchQuery(q);
 
   return (
     <div className="App app-root">
@@ -84,7 +145,7 @@ function App() {
           theme={settings?.theme || 'light'}
           onToggleTheme={toggleTheme}
           searchQuery={searchQuery}
-          onSearchChange={handleSearch}
+          onSearchChange={setSearch}
           // Support both prop names: onAddNote (requested) and onCreateNote (legacy)
           onAddNote={handleCreateNote}
           onCreateNote={handleCreateNote}
@@ -96,8 +157,8 @@ function App() {
           <Sidebar
             notes={notes}
             selectedTag={selectedTag}
-            onSelectTag={handleSelectTag}
-            onClearTag={handleClearTag}
+            onSelectTag={selectTag}
+            onClearTag={() => selectTag(null)}
           />
         </aside>
 
@@ -109,52 +170,22 @@ function App() {
             searchQuery={searchQuery}
             selectedTag={selectedTag}
             onEditNote={handleEditNote}
-            onDeleteNote={(id) => {
-              // Remove the note by id
-              setNotes(prev => prev.filter(n => n.id !== id));
-              // Clear selection if deleted
-              setSelectedNoteId(prevId => (prevId === id ? null : prevId));
-            }}
-            onTogglePin={(id, next) => {
-              // Toggle pinned for a note by id
-              setNotes(prev => prev.map(n => (n.id === id ? { ...n, pinned: next, updatedAt: Date.now() } : n)));
-            }}
+            onDeleteNote={deleteNote}
+            onTogglePin={togglePin}
           />
 
           {isEditorOpen && (
             <NoteEditor
               isOpen={isEditorOpen}
               mode={editorMode}
-              initialNote={editorMode === 'edit' ? (selectedNote || DEFAULT_NOTE) : DEFAULT_NOTE}
+              // Ensure initialNote is correctly populated in edit mode
+              initialNote={editorMode === 'edit' ? selectedNote || DEFAULT_NOTE : DEFAULT_NOTE}
               onCancel={handleCloseEditor}
               onSave={(payload) => {
-                // Create or update note in parent; persistence via useLocalStorage
                 if (editorMode === 'create') {
-                  const id = crypto?.randomUUID ? crypto.randomUUID() : String(Date.now());
-                  const now = Date.now();
-                  const newNote = {
-                    id,
-                    title: payload.title,
-                    content: payload.content || '',
-                    tags: Array.isArray(payload.tags) ? payload.tags : [],
-                    createdAt: payload.createdAt || now,
-                    updatedAt: payload.updatedAt || now,
-                    pinned: false,
-                  };
-                  setNotes(prev => [newNote, ...prev]);
-                  setSelectedNoteId(id);
+                  addNote(payload);
                 } else {
-                  // edit mode
-                  setNotes(prev => prev.map(n => {
-                    if (n.id !== (payload.id || selectedNoteId)) return n;
-                    return {
-                      ...n,
-                      title: payload.title,
-                      content: payload.content || '',
-                      tags: Array.isArray(payload.tags) ? payload.tags : [],
-                      updatedAt: payload.updatedAt || Date.now(),
-                    };
-                  }));
+                  updateNote(payload);
                 }
                 setIsEditorOpen(false);
               }}

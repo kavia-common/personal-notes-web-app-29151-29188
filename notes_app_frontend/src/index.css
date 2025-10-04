@@ -1,10 +1,21 @@
 :root {
+  /* Keep in sync with App.css */
   --color-primary: #2563EB;
   --color-accent: #F59E0B;
   --color-error: #EF4444;
   --bg: #f9fafb;
   --surface: #ffffff;
   --text: #111827;
+
+  --muted: #6b7280;
+  --border: #e5e7eb;
+  --ring: rgba(37,99,235,0.18);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+  }
 }
 
 * { box-sizing: border-box; }
@@ -17,14 +28,40 @@ body {
   background: var(--bg);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  line-height: 1.4;
+  line-height: 1.5;
 }
 
-a { color: var(--color-primary); text-decoration: none; }
+/* Links */
+a {
+  color: var(--color-primary);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
 a:hover { text-decoration: underline; }
 
-button { font-family: inherit; }
+/* Buttons */
+button {
+  font-family: inherit;
+  font-size: 14px;
+}
 
+/* Inputs */
+input, textarea, select {
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--text);
+  background: var(--surface);
+  border-color: var(--border);
+}
+
+/* Accessible focus outline for all focusable elements */
+:where(a, button, input, textarea, select, [tabindex]):focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--ring);
+  border-color: rgba(37,99,235,0.35);
+}
+
+/* Code font */
 code {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 }

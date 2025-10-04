@@ -109,6 +109,16 @@ function App() {
             searchQuery={searchQuery}
             selectedTag={selectedTag}
             onEditNote={handleEditNote}
+            onDeleteNote={(id) => {
+              // Remove the note by id
+              setNotes(prev => prev.filter(n => n.id !== id));
+              // Clear selection if deleted
+              setSelectedNoteId(prevId => (prevId === id ? null : prevId));
+            }}
+            onTogglePin={(id, next) => {
+              // Toggle pinned for a note by id
+              setNotes(prev => prev.map(n => (n.id === id ? { ...n, pinned: next, updatedAt: Date.now() } : n)));
+            }}
           />
 
           {isEditorOpen && (

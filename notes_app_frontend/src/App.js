@@ -123,10 +123,41 @@ function App() {
 
           {isEditorOpen && (
             <NoteEditor
+              isOpen={isEditorOpen}
               mode={editorMode}
-              note={editorMode === 'edit' ? (selectedNote || DEFAULT_NOTE) : DEFAULT_NOTE}
-              onClose={handleCloseEditor}
-              onSave={handleSaveNote}
+              initialNote={editorMode === 'edit' ? (selectedNote || DEFAULT_NOTE) : DEFAULT_NOTE}
+              onCancel={handleCloseEditor}
+              onSave={(payload) => {
+                // Create or update note in parent; persistence via useLocalStorage
+                if (editorMode === 'create') {
+                  const id = crypto?.randomUUID ? crypto.randomUUID() : String(Date.now());
+                  const now = Date.now();
+                  const newNote = {
+                    id,
+                    title: payload.title,
+                    content: payload.content || '',
+                    tags: Array.isArray(payload.tags) ? payload.tags : [],
+                    createdAt: payload.createdAt || now,
+                    updatedAt: payload.updatedAt || now,
+                    pinned: false,
+                  };
+                  setNotes(prev => [newNote, ...prev]);
+                  setSelectedNoteId(id);
+                } else {
+                  // edit mode
+                  setNotes(prev => prev.map(n => {
+                    if (n.id !== (payload.id || selectedNoteId)) return n;
+                    return {
+                      ...n,
+                      title: payload.title,
+                      content: payload.content || '',
+                      tags: Array.isArray(payload.tags) ? payload.tags : [],
+                      updatedAt: payload.updatedAt || Date.now(),
+                    };
+                  }));
+                }
+                setIsEditorOpen(false);
+              }}
             />
           )}
         </section>

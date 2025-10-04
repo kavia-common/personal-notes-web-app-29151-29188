@@ -85,6 +85,8 @@ function App() {
           onToggleTheme={toggleTheme}
           searchQuery={searchQuery}
           onSearchChange={handleSearch}
+          // Support both prop names: onAddNote (requested) and onCreateNote (legacy)
+          onAddNote={handleCreateNote}
           onCreateNote={handleCreateNote}
         />
       </header>
